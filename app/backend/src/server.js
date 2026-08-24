@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db/database");
+const productRoutes = require("./routes/productRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,7 +36,7 @@ app.get("/health/db", async (req, res) => {
         });
     }
 });
-
+app.use("/api/products", productRoutes);
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
 });
