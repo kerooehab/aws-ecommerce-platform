@@ -1,8 +1,6 @@
 # 🛒 AWS Production E-Commerce Platform
 
-> Production-style, highly available e-commerce infrastructure built on AWS using native cloud services, containerization, Auto Scaling, CloudFront, WAF, monitoring, and CI/CD with Jenkins.
-
----
+Production-style, highly available e-commerce infrastructure built on AWS using native cloud services, containerization, Auto Scaling, CloudFront, WAF, monitoring, and CI/CD with Jenkins.
 
 ## 📌 Project Overview
 
@@ -14,11 +12,9 @@ The next major stage is to reproduce the infrastructure using Terraform, transfo
 
 The project focuses primarily on cloud infrastructure and DevOps architecture rather than application development.
 
----
+## 🏗️ Architecture
 
-# 🏗️ Architecture
-
-```text
+```
                          Internet
                             │
                             ▼
@@ -96,20 +92,21 @@ The project focuses primarily on cloud infrastructure and DevOps architecture ra
                          │
                          ▼
                        Email
+```
 
+## 🌐 VPC Architecture
 
+| Component | Configuration |
+|---|---|
+| VPC Name | ecommerce-vpc |
+| VPC ID | vpc-087c93645cdbd0be0 |
+| VPC CIDR | 10.0.0.0/16 |
+| Region | eu-north-1 |
+| DNS Resolution | Enabled |
+| DNS Hostnames | Enabled |
+| Default VPC | No |
 
-🌐 VPC Architecture
-
-Component	Configuration
-VPC Name	ecommerce-vpc
-VPC ID	vpc-087c93645cdbd0be0
-VPC CIDR	10.0.0.0/16
-Region	eu-north-1
-DNS Resolution	Enabled
-DNS Hostnames	Enabled
-Default VPC	No
-
+```
                  ecommerce-vpc
                   10.0.0.0/16
                        │
@@ -120,9 +117,11 @@ Default VPC	No
     ┌─────┴─────┐             ┌─────┴─────┐
     │           │             │           │
  Public-A   Private-A       Public-B   Private-B
+```
 
+## 🌐 Public Layer
 
-🌐 Public Layer
+```
 Internet
    │
    ▼
@@ -132,15 +131,17 @@ Internet Gateway
    │      └── NAT Gateway
    │
    └── Public Subnet B
+```
 
 The public route table provides internet connectivity through the Internet Gateway.
 
 The NAT Gateway is located in the public layer and allows private resources to initiate outbound internet connections without exposing the private EC2 instances directly to the internet.
 
-🔒 Private Layer
+## 🔒 Private Layer
 
 The application backend is deployed into private subnets.
 
+```
 Private EC2
      │
      ▼
@@ -154,47 +155,42 @@ Internet Gateway
      │
      ▼
 Internet
+```
 
 The backend instances do not require public IP addresses.
 
-🛣️ Route Tables
+## 🛣️ Route Tables
 
 The VPC uses separate routing for the public and private layers.
 
-ecommerce-public-rt
-ecommerce-private-rt
-Main route table
+- `ecommerce-public-rt`
+- `ecommerce-private-rt`
+- Main route table
 
 The public route table provides internet access through the Internet Gateway.
 
 The private route table routes permitted outbound traffic through the NAT Gateway.
 
-🌐 Internet Gateway
+## 🌐 Internet Gateway
 
-Created:
+**Created:** `ecommerce-igw`
 
-ecommerce-igw
+**Purpose:**
+- Internet connectivity for public resources
+- Public subnet routing
+- NAT Gateway internet connectivity
 
-Purpose:
+## 🔄 NAT Gateway
 
-Internet connectivity for public resources
-Public subnet routing
-NAT Gateway internet connectivity
-🔄 NAT Gateway
-
-Created:
-
-ecommerce-nat-a
+**Created:** `ecommerce-nat-a`
 
 The NAT Gateway resides in the public layer.
 
 Its purpose is to allow private EC2 instances to access external services while preventing unsolicited inbound internet traffic directly to the private instances.
 
-🔗 VPC Endpoint
+## 🔗 VPC Endpoint
 
-Created:
-
-ecommerce-s3-endpoint
+**Created:** `ecommerce-s3-endpoint`
 
 The S3 VPC endpoint provides private connectivity between the VPC and Amazon S3.
 
@@ -202,10 +198,11 @@ This allows supported S3 traffic to avoid unnecessarily traversing the NAT Gatew
 
 The EC2 → S3 access was also tested successfully.
 
-🖥️ Compute Architecture
+## 🖥️ Compute Architecture
 
 The backend compute architecture uses:
 
+```
 Launch Template
        │
        ▼
@@ -214,26 +211,26 @@ Auto Scaling Group
        ├── EC2 - AZ A
        │
        └── EC2 - AZ B
-🚀 Launch Template
+```
 
-Created:
+## 🚀 Launch Template
 
-ecommerce-backend-lt
+**Created:** `ecommerce-backend-lt`
 
-Configuration:
-
-Amazon Linux 2023
-t3.micro
-IAM instance profile
-Security Group
-EBS root volume
-CloudWatch detailed monitoring
-Application configuration/user data where required
+**Configuration:**
+- Amazon Linux 2023
+- t3.micro
+- IAM instance profile
+- Security Group
+- EBS root volume
+- CloudWatch detailed monitoring
+- Application configuration/user data where required
 
 The subnet is intentionally not hardcoded into the Launch Template.
 
 Instead, the Auto Scaling Group selects the subnets:
 
+```
 Launch Template
        │
        ▼
@@ -241,29 +238,30 @@ Auto Scaling Group
        │
        ├── Private Subnet A
        └── Private Subnet B
+```
 
 This allows the same Launch Template to be used across multiple Availability Zones.
 
-📈 Auto Scaling Group
+## 📈 Auto Scaling Group
 
-Created:
+**Created:** `ecommerce-backend-asg`
 
-ecommerce-backend-asg
+**Configuration:**
 
-Configuration:
+| Setting | Value |
+|---|---|
+| Desired Capacity | 2 |
+| Minimum Capacity | 2 |
+| Maximum Capacity | 4 |
+| Scaling Policy | Target Tracking |
+| CPU Target | 50% |
+| Availability Zones | 2 |
+| Health Checks | EC2 + ELB |
+| Instance Warmup | 300 seconds |
 
-Setting	Value
-Desired Capacity	2
-Minimum Capacity	2
-Maximum Capacity	4
-Scaling Policy	Target Tracking
-CPU Target	50%
-Availability Zones	2
-Health Checks	EC2 + ELB
-Instance Warmup	300 seconds
+**Architecture:**
 
-Architecture:
-
+```
                   Auto Scaling Group
                            │
               ┌────────────┴────────────┐
@@ -276,21 +274,19 @@ Architecture:
               └────────────┬────────────┘
                            ▼
                           ALB
+```
 
 The Auto Scaling Group automatically adjusts capacity based on CPU utilization.
 
-⚖️ Application Load Balancer
+## ⚖️ Application Load Balancer
 
-Created:
+**Created:** `ecommerce-alb`
 
-ecommerce-alb
+**Target Group:** `ecommerce-backend-tg`
 
-Target Group:
+**Traffic flow:**
 
-ecommerce-backend-tg
-
-Traffic flow:
-
+```
 Client
    │
    ▼
@@ -307,15 +303,17 @@ Target Group
    │
    ├── EC2
    └── EC2
+```
 
 The ALB distributes application traffic across backend instances and integrates with Auto Scaling health checks.
 
-🐳 Containerization
+## 🐳 Containerization
 
 The backend is containerized using Docker.
 
-Architecture:
+**Architecture:**
 
+```
 Application
      │
      ▼
@@ -329,15 +327,17 @@ EC2
      │
      ▼
 Docker Container
+```
 
 The EC2 IAM role provides the required permissions for retrieving container images from ECR.
 
-📦 Amazon ECR
+## 📦 Amazon ECR
 
 Amazon Elastic Container Registry is used as the Docker image registry.
 
-Application delivery flow:
+**Application delivery flow:**
 
+```
 Developer
     │
     ▼
@@ -351,17 +351,19 @@ EC2
     │
     ▼
 Docker Container
-🗄️ Database
+```
+
+## 🗄️ Database
 
 The project uses:
-
-Amazon RDS
-PostgreSQL
+- Amazon RDS
+- PostgreSQL
 
 The database belongs to the private infrastructure layer.
 
-Architecture:
+**Architecture:**
 
+```
 Internet
    │
    X
@@ -373,17 +375,19 @@ Private EC2
    │
    ▼
 Private RDS
+```
 
 The database is not directly exposed to the public internet.
 
-🔐 Secrets Management
+## 🔐 Secrets Management
 
 Database credentials are managed using:
 
-AWS Secrets Manager
+**AWS Secrets Manager**
 
-Architecture:
+**Architecture:**
 
+```
 EC2
  │
  ├── IAM Role
@@ -396,32 +400,27 @@ Database Credentials
  │
  ▼
 RDS PostgreSQL
+```
 
 This avoids hardcoding database credentials into the application.
 
-🪣 Amazon S3
+## 🪣 Amazon S3
 
-Created bucket:
-
-ecommerce-platform-579302404833-eu-north-1-an
+**Created bucket:** `ecommerce-platform-579302404833-eu-north-1-an`
 
 S3 is used as object storage within the project.
 
-S3 is also integrated with the VPC through:
+S3 is also integrated with the VPC through: `ecommerce-s3-endpoint`
 
-ecommerce-s3-endpoint
-🌍 CloudFront
+## 🌍 CloudFront
 
-Created CloudFront distribution:
+**Created CloudFront distribution:** `ecommerce-platform-cdn`
 
-ecommerce-platform-cdn
+**Distribution:** `drl7g80flsjyj.cloudfront.net`
 
-Distribution:
+**Architecture:**
 
-drl7g80flsjyj.cloudfront.net
-
-Architecture:
-
+```
 User
  │
  ▼
@@ -432,17 +431,19 @@ WAF
  │
  ▼
 ALB
+```
 
 CloudFront provides the global edge layer for the application.
 
 The distribution uses all available CloudFront edge locations for global performance.
 
-🛡️ AWS WAF
+## 🛡️ AWS WAF
 
 AWS WAF is associated with the CloudFront distribution.
 
-Architecture:
+**Architecture:**
 
+```
 Internet
     │
     ▼
@@ -453,50 +454,45 @@ AWS WAF
     │
     ▼
 ALB
+```
 
 The WAF configuration includes protections selected for the e-commerce/API workload, including:
 
-AWS Core Rule Set
-Known bad inputs protection
-SQL injection protection
-IP reputation protection
-Anonymous IP protection
-Rate limiting
-Layer 7 protection
-Additional AWS-managed protections selected during configuration
+- AWS Core Rule Set
+- Known bad inputs protection
+- SQL injection protection
+- IP reputation protection
+- Anonymous IP protection
+- Rate limiting
+- Layer 7 protection
+- Additional AWS-managed protections selected during configuration
 
 The WAF provides an application-layer security boundary before requests reach the ALB.
 
-📊 CloudWatch Monitoring
+## 📊 CloudWatch Monitoring
 
 Amazon CloudWatch is used for infrastructure monitoring.
 
-EC2 / Auto Scaling
+**EC2 / Auto Scaling** — Monitoring includes:
+- CPU utilization
+- Instance health
+- Network activity
+- Auto Scaling metrics
 
-Monitoring includes:
+**ALB** — Monitoring includes:
+- Request count
+- HTTP 4xx
+- HTTP 5xx
+- Target response time
+- Target health
 
-CPU utilization
-Instance health
-Network activity
-Auto Scaling metrics
-ALB
+**RDS** — Monitoring includes:
+- CPU utilization
+- Database connections
+- Free storage
+- Freeable memory
 
-Monitoring includes:
-
-Request count
-HTTP 4xx
-HTTP 5xx
-Target response time
-Target health
-RDS
-
-Monitoring includes:
-
-CPU utilization
-Database connections
-Free storage
-Freeable memory
-🚨 CloudWatch Alarms
+## 🚨 CloudWatch Alarms
 
 CloudWatch alarms were configured for the environment.
 
@@ -504,6 +500,7 @@ The Auto Scaling Group also automatically created target-tracking alarms for CPU
 
 Example:
 
+```
 CPU > 50%
     │
     ▼
@@ -511,9 +508,11 @@ Auto Scaling Policy
     │
     ▼
 Increase Capacity
+```
 
 and:
 
+```
 CPU < Scaling Threshold
     │
     ▼
@@ -521,12 +520,15 @@ Auto Scaling Policy
     │
     ▼
 Scale In
-📧 SNS Notifications
+```
+
+## 📧 SNS Notifications
 
 Amazon SNS is used for operational notifications.
 
-Architecture:
+**Architecture:**
 
+```
 CloudWatch
     │
     ▼
@@ -537,21 +539,21 @@ SNS Topic
     │
     ▼
 Email
+```
 
 This provides an operational alerting mechanism for infrastructure events.
 
-🛠️ AWS Systems Manager
+## 🛠️ AWS Systems Manager
 
 The EC2 instances are configured for AWS Systems Manager.
 
-The EC2 IAM role includes:
-
-AmazonEC2ManagedInstanceCore
+The EC2 IAM role includes: `AmazonEC2ManagedInstanceCore`
 
 This enables Session Manager access.
 
-Architecture:
+**Architecture:**
 
+```
 AWS Systems Manager
         │
         ▼
@@ -559,29 +561,30 @@ Session Manager
         │
         ▼
 Private EC2
+```
 
 This allows administration of private EC2 instances without requiring a public SSH endpoint or bastion host.
 
-🔑 IAM
+## 🔑 IAM
 
 IAM roles are used instead of embedding long-term AWS access keys inside EC2.
 
 The EC2 instance role provides access required for:
-
-Systems Manager
-ECR image retrieval
-AWS services required by the application
+- Systems Manager
+- ECR image retrieval
+- AWS services required by the application
 
 The architecture follows the principle of least privilege as much as practical for the project.
 
-🔄 CI/CD Pipeline
+## 🔄 CI/CD Pipeline
 
 The project uses Jenkins for CI/CD.
 
 The repository webhook automatically triggers Jenkins when changes are pushed.
 
-Architecture:
+**Architecture:**
 
+```
 Developer
     │
     ▼
@@ -605,10 +608,13 @@ Jenkins
             │
             ▼
            EC2
-🔁 Jenkins Pipeline
+```
+
+## 🔁 Jenkins Pipeline
 
 The CI/CD workflow is structured around:
 
+```
 Checkout
    ↓
 Test
@@ -622,13 +628,15 @@ Push Docker Image
 Deploy
    ↓
 Health Check
+```
 
 The webhook removes the need for manually starting a Jenkins build after every repository change.
 
-🔐 Security Architecture
+## 🔐 Security Architecture
 
 The project uses a layered security architecture:
 
+```
                     Internet
                        │
                        ▼
@@ -645,24 +653,26 @@ The project uses a layered security architecture:
                        │
                        ▼
                 Private RDS
+```
 
 Security mechanisms include:
+- Public/private subnet separation
+- Private backend instances
+- Private database
+- Security Groups
+- IAM roles
+- AWS WAF
+- CloudFront
+- Secrets Manager
+- SSM Session Manager
+- VPC endpoint
+- No direct public access to backend EC2 instances
 
-Public/private subnet separation
-Private backend instances
-Private database
-Security Groups
-IAM roles
-AWS WAF
-CloudFront
-Secrets Manager
-SSM Session Manager
-VPC endpoint
-No direct public access to backend EC2 instances
-🏢 High Availability Design
+## 🏢 High Availability Design
 
 The backend is distributed across two Availability Zones.
 
+```
                  Application
                      │
                      ▼
@@ -677,16 +687,18 @@ The backend is distributed across two Availability Zones.
                 └────┬────┘
                      ▼
                     RDS
+```
 
-Auto Scaling configuration:
-
-Minimum = 2
-Desired = 2
-Maximum = 4
+**Auto Scaling configuration:**
+- Minimum = 2
+- Desired = 2
+- Maximum = 4
 
 This provides redundancy and horizontal scaling capability.
 
-📁 Project Structure
+## 📁 Project Structure
+
+```
 aws-ecommerce-platform/
 │
 ├── README.md
@@ -712,109 +724,121 @@ aws-ecommerce-platform/
 │   └── terraform/
 │
 └── .gitignore
-🧠 AWS Services Used
-AWS Service	Purpose
-Amazon VPC	Network architecture
-Subnets	Public/private network isolation
-Internet Gateway	Internet connectivity
-NAT Gateway	Private outbound connectivity
-Route Tables	Network traffic routing
-VPC Endpoint	Private AWS service connectivity
-Security Groups	Network security
-EC2	Application compute
-Launch Template	Standardized EC2 configuration
-Auto Scaling	High availability and scaling
-Application Load Balancer	Application traffic distribution
-Target Group	Backend instance registration
-RDS PostgreSQL	Relational database
-S3	Object storage
-ECR	Docker image registry
-IAM	Identity and permissions
-Secrets Manager	Secret management
-CloudFront	Global edge delivery
-AWS WAF	Web application security
-CloudWatch	Monitoring and alarms
-SNS	Operational notifications
-Systems Manager	Private EC2 management
-💰 Cost Awareness
+```
+
+## 🧠 AWS Services Used
+
+| AWS Service | Purpose |
+|---|---|
+| Amazon VPC | Network architecture |
+| Subnets | Public/private network isolation |
+| Internet Gateway | Internet connectivity |
+| NAT Gateway | Private outbound connectivity |
+| Route Tables | Network traffic routing |
+| VPC Endpoint | Private AWS service connectivity |
+| Security Groups | Network security |
+| EC2 | Application compute |
+| Launch Template | Standardized EC2 configuration |
+| Auto Scaling | High availability and scaling |
+| Application Load Balancer | Application traffic distribution |
+| Target Group | Backend instance registration |
+| RDS PostgreSQL | Relational database |
+| S3 | Object storage |
+| ECR | Docker image registry |
+| IAM | Identity and permissions |
+| Secrets Manager | Secret management |
+| CloudFront | Global edge delivery |
+| AWS WAF | Web application security |
+| CloudWatch | Monitoring and alarms |
+| SNS | Operational notifications |
+| Systems Manager | Private EC2 management |
+
+## 💰 Cost Awareness
 
 This project contains AWS services that can generate charges.
 
 Particular attention should be paid to:
-
-NAT Gateway
-Application Load Balancer
-RDS
-CloudFront
-AWS WAF
-CloudWatch
-SNS
-S3
-ECR
+- NAT Gateway
+- Application Load Balancer
+- RDS
+- CloudFront
+- AWS WAF
+- CloudWatch
+- SNS
+- S3
+- ECR
 
 Resources should be stopped or deleted when they are not required for practice.
 
-🎯 Engineering Concepts Demonstrated
-Networking
-VPC design
-CIDR
-Public/private subnet architecture
-Multi-AZ networking
-Route tables
-Internet Gateway
-NAT Gateway
-VPC endpoints
-Compute
-EC2
-Launch Templates
-Auto Scaling Groups
-Health checks
-Target tracking
-Multi-AZ deployment
-Load Balancing
-Application Load Balancer
-Target Groups
-Health checks
-Traffic distribution
-Security
-Security Groups
-IAM
-AWS WAF
-Secrets Manager
-Private subnets
-Systems Manager
-Least-privilege access
-AWS Architecture
-CloudFront
-S3
-RDS
-ECR
-Multi-AZ architecture
-Global edge delivery
-Monitoring
-CloudWatch
-Metrics
-Dashboards
-Alarms
-SNS notifications
-DevOps
-Git
-Docker
-ECR
-Jenkins
-Webhooks
-Automated builds
-Automated deployment
-Infrastructure as Code
+## 🎯 Engineering Concepts Demonstrated
+
+**Networking**
+- VPC design
+- CIDR
+- Public/private subnet architecture
+- Multi-AZ networking
+- Route tables
+- Internet Gateway
+- NAT Gateway
+- VPC endpoints
+
+**Compute**
+- EC2
+- Launch Templates
+- Auto Scaling Groups
+- Health checks
+- Target tracking
+- Multi-AZ deployment
+
+**Load Balancing**
+- Application Load Balancer
+- Target Groups
+- Health checks
+- Traffic distribution
+
+**Security**
+- Security Groups
+- IAM
+- AWS WAF
+- Secrets Manager
+- Private subnets
+- Systems Manager
+- Least-privilege access
+
+**AWS Architecture**
+- CloudFront
+- S3
+- RDS
+- ECR
+- Multi-AZ architecture
+- Global edge delivery
+
+**Monitoring**
+- CloudWatch
+- Metrics
+- Dashboards
+- Alarms
+- SNS notifications
+
+**DevOps**
+- Git
+- Docker
+- ECR
+- Jenkins
+- Webhooks
+- Automated builds
+- Automated deployment
+- Infrastructure as Code
 
 The next major stage is converting the manually created AWS infrastructure into Terraform.
 
-🚀 Terraform Phase
+## 🚀 Terraform Phase
 
 After completing and validating the infrastructure through the AWS Console, the next major phase is rebuilding the architecture using Terraform.
 
-Target structure:
+**Target structure:**
 
+```
 terraform/
 │
 ├── providers.tf
@@ -837,9 +861,11 @@ terraform/
 │
 └── environments/
     └── production/
+```
 
 Terraform will eventually manage:
 
+```
 VPC
  ├── Public Subnets
  ├── Private Subnets
@@ -875,88 +901,12 @@ Edge
 Operations
  ├── CloudWatch
  └── SNS
-📌 Project Status
-✅ Completed
- Custom VPC
- VPC CIDR 10.0.0.0/16
- 2 Public Subnets
- 2 Private Subnets
- Multi-AZ architecture
- Internet Gateway
- Public Route Table
- Private Route Table
- NAT Gateway
- S3 VPC Endpoint
- Security Groups
- EC2
- IAM Instance Role
- Launch Template
- Application Load Balancer
- Target Group
- Auto Scaling Group
- Multi-AZ backend
- CPU Target Tracking
- EC2 + ELB health checks
- RDS PostgreSQL
- S3 bucket
- ECR
- Docker backend
- CloudFront
- AWS WAF
- CloudWatch monitoring
- CloudWatch alarms
- SNS notification architecture
- Systems Manager / SSM
- IAM integration
- Secrets Manager integration
- Jenkins CI/CD
- Jenkins Webhook workflow
-🔜 Next Major Phase
+```
 
-The main remaining technical phase is:
 
-Terraform Infrastructure as Code
+## 🔥 Architecture Summary
 
-The objective is to recreate the entire AWS architecture using Terraform instead of manually configuring resources through the AWS Console.
-
-The Terraform implementation will include:
-
-VPC
-Subnets
-Route Tables
-Internet Gateway
-NAT Gateway
-VPC Endpoint
-Security Groups
-IAM
-EC2
-Launch Template
-ALB
-Target Groups
-Auto Scaling
-RDS
-S3
-ECR
-CloudFront
-WAF
-CloudWatch
-SNS
-
-The Terraform phase will focus on:
-
-Variables
-Outputs
-Data sources
-Locals
-Dynamic blocks
-Modules
-Remote state
-State management
-Dependency management
-Reusable infrastructure
-Environment separation
-
-🔥 Architecture Summary
+```
                          USERS
                            │
                            ▼
@@ -1021,4 +971,4 @@ ECR
    │
    ▼
 EC2 / ASG
-
+```
