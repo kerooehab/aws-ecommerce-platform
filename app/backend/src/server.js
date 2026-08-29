@@ -1,8 +1,11 @@
-require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
-const pool = require("./db/database");
+
+const {
+    initializeDatabase,
+    query
+} = require("./db/database");
+
 const productRoutes = require("./routes/productRoutes");
 
 const app = express();
@@ -20,7 +23,7 @@ app.get("/health", (req, res) => {
 
 app.get("/health/db", async (req, res) => {
     try {
-        const result = await pool.query("SELECT NOW()");
+        const result = await query("SELECT NOW()");
 
         res.json({
             status: "healthy",
@@ -28,7 +31,7 @@ app.get("/health/db", async (req, res) => {
             time: result.rows[0].now
         });
     } catch (error) {
-        console.error(error);
+        console.error("Database health check failed:", error);
 
         res.status(500).json({
             status: "unhealthy",
@@ -36,7 +39,20 @@ app.get("/health/db", async (req, res) => {
         });
     }
 });
+
 app.use("/api/products", productRoutes);
-app.listen(PORT, () => {
-    console.log(`Backend running on port ${PORT}`);
-});
+
+async function startServer() {
+    try {
+        await initializeDatabase();
+
+        app.listen(PORT, () => {
+            console.log(`Backend running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("Failed to initialize database:", error);
+        process.exit(1);
+    }
+}
+
+startServer();
